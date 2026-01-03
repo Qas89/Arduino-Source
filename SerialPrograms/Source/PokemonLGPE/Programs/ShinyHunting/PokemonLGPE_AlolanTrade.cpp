@@ -57,7 +57,8 @@ std::unique_ptr<StatsTracker> AlolanTrade_Descriptor::make_stats() const{
 }
 
 AlolanTrade::AlolanTrade()
-    : NUM_TRADES(
+    : STOP_AFTER_CURRENT("Batch")
+    , NUM_TRADES(
         "<b>Number of Pokemon to trade:</b>",
         LockMode::LOCK_WHILE_RUNNING,
         30, 1
@@ -75,6 +76,7 @@ AlolanTrade::AlolanTrade()
         &NOTIFICATION_PROGRAM_FINISH,
     })
 {
+    PA_ADD_OPTION(STOP_AFTER_CURRENT);
     PA_ADD_OPTION(NUM_TRADES);
     PA_ADD_OPTION(GO_HOME_WHEN_DONE);
     PA_ADD_OPTION(NOTIFICATIONS);
@@ -140,6 +142,8 @@ void AlolanTrade::program(SingleSwitchProgramEnvironment& env, CancellableScope&
     assert_16_9_720p_min(env.logger(), env.console);
     AlolanTrade_Descriptor::Stats& stats = env.current_stats<AlolanTrade_Descriptor::Stats>();
 
+    DeferredStopButtonOption::ResetOnExit reset_on_exit(STOP_AFTER_CURRENT);
+
     /*
     WARNING: JOYCON TEST PROGRAM. Not well tested. Bare minimum in general.
 
@@ -169,6 +173,9 @@ void AlolanTrade::program(SingleSwitchProgramEnvironment& env, CancellableScope&
 
     bool shiny_found = false;
     while (!shiny_found) {
+        if (STOP_AFTER_CURRENT.should_stop()){
+            break;
+        }
         //Run trades
         for (uint16_t i = 0; i < NUM_TRADES; i++) {
             env.log("Running trade.");

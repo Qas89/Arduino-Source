@@ -7,6 +7,7 @@
 #ifndef PokemonAutomation_PokemonLGPE_AlolanTrade_H
 #define PokemonAutomation_PokemonLGPE_AlolanTrade_H
 
+#include "Common/Cpp/Options/ButtonOption.h"
 #include "NintendoSwitch/Controllers/Joycon/NintendoSwitch_Joycon.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "NintendoSwitch/Options/NintendoSwitch_GoHomeWhenDoneOption.h"
@@ -31,6 +32,8 @@ public:
 
 private:
     void run_trade(SingleSwitchProgramEnvironment& env, JoyconContext& context);
+
+    DeferredStopButtonOption STOP_AFTER_CURRENT;
 
     SimpleIntegerOption<uint32_t> NUM_TRADES;
     
