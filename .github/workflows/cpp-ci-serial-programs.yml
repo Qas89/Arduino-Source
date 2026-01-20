@@ -33,9 +33,14 @@ jobs:
             # Excluded because macos default toolset is already clang
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
+        path: 'Arduino-Source'
         submodules: 'recursive'
+    - uses: actions/checkout@v6
+      with:
+        repository: 'PokemonAutomation/CommandLineTests'
+        path: 'CommandLineTests'
     - uses: jurplel/install-qt-action@v4
       with:
         version: ${{ matrix.qt_version }}
@@ -46,13 +51,19 @@ jobs:
         sudo apt update
         sudo apt upgrade
         sudo apt install libopencv-dev
+        sudo apt install ./Arduino-Source/3rdPartyBinaries/libdpp-10.0.28-linux-x64.deb
     - name: Install dependencies
       if: startsWith(matrix.os, 'mac')
       run: |
         brew install opencv onnxruntime
+        brew tap-new --no-git PA/libdpp
+        FORMULA_DIR="$(brew --repo PA/libdpp)/Formula"
+        mkdir -p "$FORMULA_DIR"
+        cp Arduino-Source/3rdPartyBinaries/libdpp@10.0.28.rb "$FORMULA_DIR/"
+        brew install libdpp@10.0.28
     - name: Generate binaries
       run: |
-        cd SerialPrograms
+        cd Arduino-Source/SerialPrograms
         mkdir bin
         cd bin
         cmake .. -DQT_MAJOR:STRING=${{ matrix.qt_version_major }} ${{ matrix.cmake_additional_param }}
@@ -60,10 +71,21 @@ jobs:
     - name: Prepare upload folder
       if: startsWith(matrix.os, 'windows')
       run: |
-        del SerialPrograms/bin/RelWithDebInfo/SerialProgramsLib.lib
+        cd Arduino-Source
         echo https://github.com/${{github.repository}}/commit/${{github.sha}} > SerialPrograms/bin/RelWithDebInfo/version.txt
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v6
       if: startsWith(matrix.os, 'windows')
       with:
         name: Serial Programs (os=${{ matrix.os }} - compiler=${{ matrix.compiler }} - qt_version=${{ matrix.qt_version }})
-        path: SerialPrograms/bin/RelWithDebInfo
+        path: Arduino-Source/SerialPrograms/bin/RelWithDebInfo
+    - name: Run tests
+      if: startsWith(matrix.os, 'windows')
+      run: |
+        cd Arduino-Source/SerialPrograms/bin
+        $process = Start-Process -FilePath "./RelWithDebInfo/SerialPrograms.exe" `
+                                 -ArgumentList "--command-line-test-mode --command-line-test-folder ../../../CommandLineTests" `
+                                 -NoNewWindow -Wait -PassThru
+        if ($process.ExitCode -ne 0) {
+            Write-Error "Tests failed with exit code $($process.ExitCode)"
+            exit 1
+        }
